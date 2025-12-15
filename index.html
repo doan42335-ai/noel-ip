@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>Noel AI Mobile Deluxe</title>
+<style>
+html,body{margin:0;padding:0;overflow:hidden;background:#020202;color:#fff;font-family:sans-serif}
+#ui{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(0,0,0,.6);padding:10px 18px;border-radius:16px;font-size:14px}
+#status{text-align:center;color:#00ffcc;font-weight:600}
+video{display:none}
+</style>
+</head>
+<body>
+
+
+<div id="ui"><div id="status">🎄 Đưa tay vào camera</div></div>
+<video id="video" autoplay muted playsinline></video>
+
+
+<script type="importmap">{
+"imports":{
+"three":"https://unpkg.com/three@0.160.0/build/three.module.js"
+}}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+
+<script type="module">
+import * as THREE from 'three';
+
+
+// ===== CONFIG =====
+const COUNT = 4500;
+let mode = 'IDLE';
+
+
+// ===== SCENE =====
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 500);
+camera.position.z = 48;
+
+
+const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+
+window.onresize=()=>{
+camera.aspect=innerWidth/innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(innerWidth,innerHeight);
+}
+
+
+// ===== PARTICLES =====
+const geo = new THREE.BufferGeometry();
+const pos = new Float32Array(COUNT*3);
+const target = new Float32Array(COUNT*3);
+const colors = new Float32Array(COUNT*3);
+
+
+for(let i=0;i<COUNT;i++){
+let t=i/COUNT;
+let r=13*t;
+let a=i*0.65;
+pos[i*3]=(Math.random()-.5)*70;
+pos[i*3+1]=(Math.random()-.5)*70;
+pos[i*3+2]=(Math.random()-.5)*70;
+
+
+target[i*3]=Math.cos(a)*r;
+target[i*3+1]=22-44*t;
+</html>
