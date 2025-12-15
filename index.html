@@ -1,75 +1,201 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>Noel AI Mobile Deluxe</title>
-<style>
-html,body{margin:0;padding:0;overflow:hidden;background:#020202;color:#fff;font-family:sans-serif}
-#ui{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(0,0,0,.6);padding:10px 18px;border-radius:16px;font-size:14px}
-#status{text-align:center;color:#00ffcc;font-weight:600}
-video{display:none}
-</style>
+    <title>Christmas AR Hand Tracking</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.min.js"></script>
+    
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        /* Ẩn phần tử video để camera chỉ hoạt động ở chế độ nền */
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1px;
+            height: 1px;
+            visibility: hidden; 
+        }
+        /* Hiển thị trạng thái ở cuối màn hình (giống như trong ảnh của bạn) */
+        #status {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff66; /* Màu xanh lá nổi bật */
+            font-size: 18px;
+            font-family: sans-serif;
+            padding: 8px 15px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            z-index: 100;
+        }
+    </style>
 </head>
 <body>
 
+    <video id="video"></video>
+    <div id="status">Đưa tay vào camera</div>
 
-<div id="ui"><div id="status">🎄 Đưa tay vào camera</div></div>
-<video id="video" autoplay muted playsinline></video>
-
-
-<script type="importmap">{
-"imports":{
-"three":"https://unpkg.com/three@0.160.0/build/three.module.js"
-}}
-</script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-
-
-<script type="module">
-import * as THREE from 'three';
-
-
-// ===== CONFIG =====
-const COUNT = 4500;
-let mode = 'IDLE';
-
-
-// ===== SCENE =====
+<script>
+// ===================================
+// KHỞI TẠO CÁC BIẾN CƠ BẢN CỦA THREE.JS
+// ===================================
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 500);
-camera.position.z = 48;
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 30;
+camera.position.y = 10;
+camera.lookAt(0, 0, 0);
 
-
-const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
-renderer.setSize(innerWidth, innerHeight);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000000);
 document.body.appendChild(renderer.domElement);
 
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
-window.onresize=()=>{
-camera.aspect=innerWidth/innerHeight;
-camera.updateProjectionMatrix();
-renderer.setSize(innerWidth,innerHeight);
+// ===================================
+// KHỞI TẠO CÂY THÔNG TỪ HẠT (PARTICLES)
+// ===================================
+const COUNT = 3000;
+const geo = new THREE.BufferGeometry();
+const pos = new Float32Array(COUNT * 3);
+const target = new Float32Array(COUNT * 3);
+const colors = new Float32Array(COUNT * 3);
+let mode = 'IDLE'; // 'IDLE', 'TREE', 'EXPLODE'
+
+for(let i = 0; i < COUNT; i++) {
+    // Vị trí ban đầu (random trong không gian)
+    pos[i*3] = (Math.random() - 0.5) * 40;
+    pos[i*3+1] = (Math.random() - 0.5) * 40;
+    pos[i*3+2] = (Math.random() - 0.5) * 40;
+
+    // Vị trí mục tiêu (dạng nón cây thông)
+    const t = i / COUNT; // 0 đến 1
+    const r = (1 - t) * 15; // Bán kính lớn ở gốc (15), nhỏ ở đỉnh
+    const a = Math.random() * Math.PI * 2; // Góc ngẫu nhiên
+    
+    target[i*3] = Math.cos(a) * r;
+    target[i*3+1] = 22 - 44 * t; // Chiều cao từ 22 (đỉnh) đến -22 (gốc)
+    target[i*3+2] = Math.sin(a) * r;
+
+    // đèn nhiều màu
+    const c = [
+        [1, 0, 0], [0, 1, 0], [0, 0.8, 1], [1, 0.8, 0]
+    ][Math.floor(Math.random() * 4)];
+    colors[i*3] = c[0]; 
+    colors[i*3+1] = c[1]; 
+    colors[i*3+2] = c[2];
 }
 
+geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-// ===== PARTICLES =====
-const geo = new THREE.BufferGeometry();
-const pos = new Float32Array(COUNT*3);
-const target = new Float32Array(COUNT*3);
-const colors = new Float32Array(COUNT*3);
+const mat = new THREE.PointsMaterial({ size: 0.65, vertexColors: true });
+const points = new THREE.Points(geo, mat);
+scene.add(points);
 
+// ===== STAR TOP (Ngôi sao trên đỉnh) =====
+const star = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(2.3, 0),
+    new THREE.MeshBasicMaterial({ color: 0xffffcc })
+);
+star.position.y = 23;
+scene.add(star);
 
-for(let i=0;i<COUNT;i++){
-let t=i/COUNT;
-let r=13*t;
-let a=i*0.65;
-pos[i*3]=(Math.random()-.5)*70;
-pos[i*3+1]=(Math.random()-.5)*70;
-pos[i*3+2]=(Math.random()-.5)*70;
+// ===== TEXT (Banner Chúc Mừng) =====
+const loader = new THREE.TextureLoader();
+// **Chú ý:** Đảm bảo link ảnh này còn hoạt động. Nếu không, bạn cần thay bằng ảnh khác.
+const textSprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: loader.load('https://i.imgur.com/0Z8YV6H.png'), transparent: true })
+);
+textSprite.scale.set(22, 8, 1);
+textSprite.position.y = -26;
+scene.add(textSprite);
 
+// ===================================
+// HAND AI (SỬ DỤNG MEDIAPIPE)
+// ===================================
+const video = document.getElementById('video');
+const statusDiv = document.getElementById('status'); // Đổi tên biến để tránh trùng lặp
 
-target[i*3]=Math.cos(a)*r;
-target[i*3+1]=22-44*t;
+const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+hands.setOptions({ maxNumHands: 1, minDetectionConfidence: .6, minTrackingConfidence: .6 });
+hands.onResults(r => {
+    if (!r.multiHandLandmarks) {
+        mode = 'IDLE';
+        statusDiv.textContent = '🎄 Đưa tay vào camera';
+        return;
+    }
+    
+    const lm = r.multiHandLandmarks[0];
+    const wrist = lm[0]; // Cổ tay
+    const tip = lm[8];   // Đầu ngón trỏ
+    
+    // Tính khoảng cách giữa ngón trỏ và cổ tay (để xác định cử chỉ nắm/xòe)
+    const d = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+
+    if (d < 0.18) { // Khoảng cách nhỏ (cử chỉ nắm tay)
+        mode = 'TREE';
+        statusDiv.textContent = '🎄 Cây thông Noel';
+    } else if (d > 0.34) { // Khoảng cách lớn (cử chỉ xòe tay)
+        mode = 'EXPLODE';
+        statusDiv.textContent = '🎆 Pháo hoa';
+    } else {
+        mode = 'IDLE';
+        statusDiv.textContent = '👋 Nắm hoặc xòe tay';
+    }
+});
+
+// Khởi động Camera. **facingMode:'user'** sử dụng camera trước (selfie).
+// Nếu bạn muốn dùng camera sau, đổi thành 'environment'.
+new Camera(video, {
+    onFrame: async () => await hands.send({ image: video }),
+    width: 640,
+    height: 480,
+    facingMode: 'user'
+}).start();
+
+// ===================================
+// ANIMATE (Hàm hoạt ảnh)
+// ===================================
+function animate() {
+    requestAnimationFrame(animate);
+    const p = geo.attributes.position.array;
+    
+    for(let i = 0; i < COUNT; i++){
+        let i3 = i * 3;
+        
+        if(mode === 'TREE'){
+            // Di chuyển từ từ đến vị trí cây thông (target)
+            p[i3] += (target[i3] - p[i3]) * .055;
+            p[i3+1] += (target[i3+1] - p[i3+1]) * .055;
+            p[i3+2] += (target[i3+2] - p[i3+2]) * .055;
+        } else if(mode === 'EXPLODE'){
+            // Di chuyển ngẫu nhiên (pháo hoa)
+            p[i3] += (Math.random() - .5) * 1.6;
+            p[i3+1] += (Math.random() - .5) * 1.6;
+            p[i3+2] += (Math.random() - .5) * 1.6;
+        }
+    }
+    
+    geo.attributes.position.needsUpdate = true;
+    star.rotation.y += .06;
+    
+    // Tạo hiệu ứng nhấp nháy cho chữ
+    textSprite.material.opacity = 0.7 + Math.sin(Date.now() * 0.004) * 0.3;
+    
+    renderer.render(scene, camera);
+}
+animate();
+</script>
+
+</body>
 </html>
